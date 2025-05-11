@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"mrbi/config"
+	"mrbi/internal/model/entity"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -27,6 +28,8 @@ func init() {
 		log.Fatalf("Failed to connect DB, %s", err)
 	}
 	//自动迁移model
+	entity.AutoMigrateChart(db)
+	entity.AutoMigrateUser(db)
 }
 func LoadDB() *gorm.DB {
 	return db.Session(&gorm.Session{})

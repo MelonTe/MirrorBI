@@ -3,6 +3,7 @@ package main
 import (
 	"mrbi/cmd"
 	_ "mrbi/docs"
+	_ "mrbi/pkg/rds"
 )
 
 // @title           MirrorBI
