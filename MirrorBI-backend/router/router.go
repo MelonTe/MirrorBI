@@ -23,12 +23,12 @@ func SetupRoutes(r *gin.Engine) {
 	middleware.InitSession(r)
 	//启用 CORS 中间件，允许跨域资源共享
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173", "http://www.cloudhivegallery.cloud"}, // 允许的来源（前端地址）
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},                    // 允许的 HTTP 方法
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},          // 允许的请求头
-		ExposeHeaders:    []string{"Content-Length", "Authorization"},                            // 允许暴露的响应头
-		AllowCredentials: true,                                                                   // 是否允许携带凭证（如 Cookies）
-		AllowWildcard:    true,                                                                   // 是否允许任何来源
+		AllowOrigins:     []string{"http://localhost:8000"},                             // 允许的来源（前端地址）
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},           // 允许的 HTTP 方法
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"}, // 允许的请求头
+		ExposeHeaders:    []string{"Content-Length", "Authorization"},                   // 允许暴露的响应头
+		AllowCredentials: true,                                                          // 是否允许携带凭证（如 Cookies）
+		AllowWildcard:    true,                                                          // 是否允许任何来源
 	}))
 
 	//注册路由
@@ -48,5 +48,14 @@ func SetupRoutes(r *gin.Engine) {
 		userAPI.GET("/get", middleware.AuthCheck(consts.ADMIN_ROLE), controller.GetUserById)
 		//userAPI.POST("/avatar", middleware.LoginCheck(), controller.UploadAvatar)
 		userAPI.POST("/edit", middleware.LoginCheck(), controller.EditUser)
+	}
+	chartAPI := api.Group("/chart")
+	{
+		chartAPI.POST("/list/page", controller.ListChartByPage)
+		chartAPI.POST("/list/page/my", controller.ListMyChartByPage)
+		chartAPI.POST("/add", middleware.LoginCheck(), controller.AddChart)
+		chartAPI.POST("/delete", middleware.LoginCheck(), controller.DeleteChart)
+		chartAPI.GET("/get", controller.GetChartById)
+		chartAPI.POST("/edit", middleware.LoginCheck(), controller.EditChart)
 	}
 }

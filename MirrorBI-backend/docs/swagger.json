@@ -17,6 +17,310 @@
     },
     "host": "localhost:8080",
     "paths": {
+        "/api/chart/add": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chart"
+                ],
+                "summary": "添加一个图表",
+                "parameters": [
+                    {
+                        "description": "用户添加申请参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chart.ChartAddRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "添加成功，返回添加图表的ID",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "添加失败，详情见响应中的code",
+                        "schema": {
+                            "$ref": "#/definitions/common.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/chart/delete": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chart"
+                ],
+                "summary": "添加一个图表",
+                "parameters": [
+                    {
+                        "description": "要删除的图表的ID",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/common.DeleteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "删除成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "删除失败，详情见响应中的code",
+                        "schema": {
+                            "$ref": "#/definitions/common.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/chart/edit": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chart"
+                ],
+                "summary": "编辑图表",
+                "parameters": [
+                    {
+                        "description": "图表编辑信息",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chart.ChartEditRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "编辑成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "编辑失败，详情见响应中的code",
+                        "schema": {
+                            "$ref": "#/definitions/common.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/chart/get": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chart"
+                ],
+                "summary": "获取一个图表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "图表的ID",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "获取成功，返回图表数据",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.Chart"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "获取失败，详情见响应中的code",
+                        "schema": {
+                            "$ref": "#/definitions/common.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/chart/list/page": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chart"
+                ],
+                "summary": "根据页数查询图表列表",
+                "parameters": [
+                    {
+                        "description": "需要查询的页数、以及图表关键信息",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chart.ChartQueryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "查询成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/chart.ListChartResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "更新失败，详情见响应中的code",
+                        "schema": {
+                            "$ref": "#/definitions/common.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/chart/list/page/my": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chart"
+                ],
+                "summary": "根据页数查询图表列表",
+                "parameters": [
+                    {
+                        "description": "需要查询的页数、以及图表关键信息",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chart.ChartQueryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "查询成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/chart.ListChartResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "更新失败，详情见响应中的code",
+                        "schema": {
+                            "$ref": "#/definitions/common.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/user/add": {
             "post": {
                 "description": "默认密码为12345678",
@@ -554,6 +858,111 @@
         }
     },
     "definitions": {
+        "chart.ChartAddRequest": {
+            "type": "object",
+            "properties": {
+                "chartData": {
+                    "description": "图表数据",
+                    "type": "string"
+                },
+                "chartType": {
+                    "description": "图表类型",
+                    "type": "string"
+                },
+                "goal": {
+                    "description": "目标",
+                    "type": "string"
+                }
+            }
+        },
+        "chart.ChartEditRequest": {
+            "type": "object",
+            "properties": {
+                "chartData": {
+                    "description": "图表数据",
+                    "type": "string"
+                },
+                "chartType": {
+                    "description": "图表类型",
+                    "type": "string"
+                },
+                "goal": {
+                    "description": "目标",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "图表ID",
+                    "type": "string",
+                    "example": ""
+                }
+            }
+        },
+        "chart.ChartQueryRequest": {
+            "type": "object",
+            "properties": {
+                "chartData": {
+                    "description": "图表数据",
+                    "type": "string"
+                },
+                "chartType": {
+                    "description": "图表类型",
+                    "type": "string"
+                },
+                "current": {
+                    "description": "当前页数",
+                    "type": "integer"
+                },
+                "goal": {
+                    "description": "目标",
+                    "type": "string"
+                },
+                "pageSize": {
+                    "description": "页面大小",
+                    "type": "integer"
+                },
+                "sortField": {
+                    "description": "排序字段",
+                    "type": "string"
+                },
+                "sortOrder": {
+                    "description": "排序顺序（默认升序）",
+                    "type": "string"
+                },
+                "userId": {
+                    "description": "用户Id",
+                    "type": "string",
+                    "example": ""
+                }
+            }
+        },
+        "chart.ListChartResponse": {
+            "type": "object",
+            "properties": {
+                "current": {
+                    "description": "当前页数",
+                    "type": "integer"
+                },
+                "pages": {
+                    "description": "总页数",
+                    "type": "integer"
+                },
+                "records": {
+                    "description": "图表列表",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.Chart"
+                    }
+                },
+                "size": {
+                    "description": "页面大小",
+                    "type": "integer"
+                },
+                "total": {
+                    "description": "总记录数",
+                    "type": "integer"
+                }
+            }
+        },
         "common.DeleteRequest": {
             "type": "object",
             "required": [
@@ -577,6 +986,40 @@
                 },
                 "msg": {
                     "type": "string"
+                }
+            }
+        },
+        "entity.Chart": {
+            "type": "object",
+            "properties": {
+                "chartData": {
+                    "type": "string"
+                },
+                "chartType": {
+                    "type": "string"
+                },
+                "createTime": {
+                    "type": "string"
+                },
+                "genChart": {
+                    "type": "string"
+                },
+                "genResult": {
+                    "type": "string"
+                },
+                "goal": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string",
+                    "example": ""
+                },
+                "updateTime": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string",
+                    "example": ""
                 }
             }
         },

@@ -1,4 +1,80 @@
 definitions:
+  chart.ChartAddRequest:
+    properties:
+      chartData:
+        description: 图表数据
+        type: string
+      chartType:
+        description: 图表类型
+        type: string
+      goal:
+        description: 目标
+        type: string
+    type: object
+  chart.ChartEditRequest:
+    properties:
+      chartData:
+        description: 图表数据
+        type: string
+      chartType:
+        description: 图表类型
+        type: string
+      goal:
+        description: 目标
+        type: string
+      id:
+        description: 图表ID
+        example: ""
+        type: string
+    type: object
+  chart.ChartQueryRequest:
+    properties:
+      chartData:
+        description: 图表数据
+        type: string
+      chartType:
+        description: 图表类型
+        type: string
+      current:
+        description: 当前页数
+        type: integer
+      goal:
+        description: 目标
+        type: string
+      pageSize:
+        description: 页面大小
+        type: integer
+      sortField:
+        description: 排序字段
+        type: string
+      sortOrder:
+        description: 排序顺序（默认升序）
+        type: string
+      userId:
+        description: 用户Id
+        example: ""
+        type: string
+    type: object
+  chart.ListChartResponse:
+    properties:
+      current:
+        description: 当前页数
+        type: integer
+      pages:
+        description: 总页数
+        type: integer
+      records:
+        description: 图表列表
+        items:
+          $ref: '#/definitions/entity.Chart'
+        type: array
+      size:
+        description: 页面大小
+        type: integer
+      total:
+        description: 总记录数
+        type: integer
+    type: object
   common.DeleteRequest:
     properties:
       id:
@@ -14,6 +90,29 @@ definitions:
       data:
         type: object
       msg:
+        type: string
+    type: object
+  entity.Chart:
+    properties:
+      chartData:
+        type: string
+      chartType:
+        type: string
+      createTime:
+        type: string
+      genChart:
+        type: string
+      genResult:
+        type: string
+      goal:
+        type: string
+      id:
+        example: ""
+        type: string
+      updateTime:
+        type: string
+      userId:
+        example: ""
         type: string
     type: object
   entity.User:
@@ -218,6 +317,185 @@ info:
   title: MirrorBI
   version: "1.0"
 paths:
+  /api/chart/add:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 用户添加申请参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chart.ChartAddRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 添加成功，返回添加图表的ID
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  type: string
+              type: object
+        "400":
+          description: 添加失败，详情见响应中的code
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 添加一个图表
+      tags:
+      - chart
+  /api/chart/delete:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 要删除的图表的ID
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/common.DeleteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 删除成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: 删除失败，详情见响应中的code
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 添加一个图表
+      tags:
+      - chart
+  /api/chart/edit:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 图表编辑信息
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chart.ChartEditRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 编辑成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: 编辑失败，详情见响应中的code
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 编辑图表
+      tags:
+      - chart
+  /api/chart/get:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 图表的ID
+        in: query
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 获取成功，返回图表数据
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.Chart'
+              type: object
+        "400":
+          description: 获取失败，详情见响应中的code
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 获取一个图表
+      tags:
+      - chart
+  /api/chart/list/page:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 需要查询的页数、以及图表关键信息
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chart.ChartQueryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 查询成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/chart.ListChartResponse'
+              type: object
+        "400":
+          description: 更新失败，详情见响应中的code
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 根据页数查询图表列表
+      tags:
+      - chart
+  /api/chart/list/page/my:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 需要查询的页数、以及图表关键信息
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chart.ChartQueryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 查询成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/chart.ListChartResponse'
+              type: object
+        "400":
+          description: 更新失败，详情见响应中的code
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 根据页数查询图表列表
+      tags:
+      - chart
   /api/user/add:
     post:
       consumes:
