@@ -177,6 +177,64 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/chart/gen/ai": {
+            "post": {
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chart"
+                ],
+                "summary": "上传excel文件和目标信息，使用AI生成信息。",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "excel文件",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "description": "图表生成信息",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chart.ChartGenByAiRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "生成成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "生成失败，详情见响应中的code",
+                        "schema": {
+                            "$ref": "#/definitions/common.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/chart/get": {
             "get": {
                 "consumes": [
@@ -904,6 +962,23 @@ const docTemplate = `{
                 }
             }
         },
+        "chart.ChartGenByAiRequest": {
+            "type": "object",
+            "properties": {
+                "chartType": {
+                    "description": "图表类型",
+                    "type": "string"
+                },
+                "goal": {
+                    "description": "分析目标",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "图表名称",
+                    "type": "string"
+                }
+            }
+        },
         "chart.ChartQueryRequest": {
             "type": "object",
             "properties": {
@@ -921,6 +996,10 @@ const docTemplate = `{
                 },
                 "goal": {
                     "description": "目标",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "图表名称",
                     "type": "string"
                 },
                 "pageSize": {
@@ -991,7 +1070,7 @@ const docTemplate = `{
                 "data": {
                     "type": "object"
                 },
-                "msg": {
+                "message": {
                     "type": "string"
                 }
             }
@@ -1020,6 +1099,9 @@ const docTemplate = `{
                 "id": {
                     "type": "string",
                     "example": ""
+                },
+                "name": {
+                    "type": "string"
                 },
                 "updateTime": {
                     "type": "string"

@@ -1,11 +1,13 @@
 package controller
 
 import (
+	"mrbi/internal/api/siliconflow"
 	"mrbi/internal/common"
 	"mrbi/internal/ecode"
 	reqChart "mrbi/internal/model/dto/req/chart"
 	resChart "mrbi/internal/model/dto/res/chart"
 	"mrbi/internal/service"
+	"mrbi/internal/utils"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -191,4 +193,32 @@ func EditChart(c *gin.Context) {
 		common.Success(c, success)
 		return
 	}
+}
+
+// ChartGenByAi godoc
+// @Summary      上传excel文件和目标信息，使用AI生成信息。
+// @Tags         chart
+// @Accept multipart/form-data
+// @Produce      json
+// @Param        file formData file true "excel文件"
+// @Param		request body reqChart.ChartGenByAiRequest true "图表生成信息"
+// @Success      200  {object}  common.Response{data=bool} "生成成功"
+// @Failure      400  {object}  common.Response "生成失败，详情见响应中的code"
+// @Router       /api/chart/gen/ai [POST]
+func ChartGenByAi(c *gin.Context) {
+	file, _ := c.FormFile("file")
+	//文件存放至本地
+	dst, originErr := utils.SaveFileToLocal(file)
+	if originErr != nil {
+		common.BaseResponse(c, nil, "文件保存失败", ecode.SYSTEM_ERROR)
+		return
+	} else {
+		defer utils.DeleteFile(dst)
+	}
+	data, originErr := utils.ExcelToCSV(dst)
+	if originErr != nil {
+		common.BaseResponse(c, nil, originErr.Error(), ecode.SYSTEM_ERROR)
+		return
+	}
+	siliconflow.NewLLMChatReqeustNoContext("分析一下这个数据有什么趋势", data)
 }

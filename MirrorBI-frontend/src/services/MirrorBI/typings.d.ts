@@ -97,7 +97,7 @@ declare namespace API {
   type Response = {
     code?: number;
     data?: Record<string, any>;
-    msg?: string;
+    message?: string;
   };
 
   type User = {

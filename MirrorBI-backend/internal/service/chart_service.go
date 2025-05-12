@@ -96,6 +96,9 @@ func (s *ChartService) GetQueryWrapper(db *gorm.DB, req *reqChart.ChartQueryRequ
 	if req.UserID != 0 {
 		query = query.Where("user_id = ?", req.UserID)
 	}
+	if req.Name != "" {
+		query = query.Where("name LIKE ?", "%"+req.Name+"%")
+	}
 	if req.ChartType != "" {
 		query = query.Where("chart_type = ?", req.ChartType)
 	}

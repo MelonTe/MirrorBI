@@ -57,5 +57,6 @@ func SetupRoutes(r *gin.Engine) {
 		chartAPI.POST("/delete", middleware.LoginCheck(), controller.DeleteChart)
 		chartAPI.GET("/get", controller.GetChartById)
 		chartAPI.POST("/edit", middleware.LoginCheck(), controller.EditChart)
+		chartAPI.POST("/gen/ai", controller.ChartGenByAi)
 	}
 }

@@ -7,6 +7,7 @@ import (
 
 type Chart struct {
 	ID         uint64         `gorm:"primaryKey;comment:id" json:"id,string" swaggertype:"string"`
+	Name       string         `gorm:"type:varchar(128);comment:图表名称" json:"name"`
 	Goal       string         `gorm:"type:text;comment:分析目标" json:"goal"`
 	ChartData  string         `gorm:"type:text;comment:图表数据" json:"chartData"`
 	ChartType  string         `gorm:"type:varchar(128);comment:图表类型" json:"chartType"`

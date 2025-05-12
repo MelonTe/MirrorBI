@@ -27,6 +27,18 @@ definitions:
         example: ""
         type: string
     type: object
+  chart.ChartGenByAiRequest:
+    properties:
+      chartType:
+        description: 图表类型
+        type: string
+      goal:
+        description: 分析目标
+        type: string
+      name:
+        description: 图表名称
+        type: string
+    type: object
   chart.ChartQueryRequest:
     properties:
       chartData:
@@ -40,6 +52,9 @@ definitions:
         type: integer
       goal:
         description: 目标
+        type: string
+      name:
+        description: 图表名称
         type: string
       pageSize:
         description: 页面大小
@@ -89,7 +104,7 @@ definitions:
         type: integer
       data:
         type: object
-      msg:
+      message:
         type: string
     type: object
   entity.Chart:
@@ -108,6 +123,8 @@ definitions:
         type: string
       id:
         example: ""
+        type: string
+      name:
         type: string
       updateTime:
         type: string
@@ -405,6 +422,41 @@ paths:
           schema:
             $ref: '#/definitions/common.Response'
       summary: 编辑图表
+      tags:
+      - chart
+  /api/chart/gen/ai:
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: excel文件
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: 图表生成信息
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chart.ChartGenByAiRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 生成成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: 生成失败，详情见响应中的code
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 上传excel文件和目标信息，使用AI生成信息。
       tags:
       - chart
   /api/chart/get:

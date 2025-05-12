@@ -30,6 +30,9 @@ type Config struct {
 		Password string `mapstructure:"password"`
 		UserName string `mapstructure:"username"`
 	}
+	Siliconflow struct {
+		APIkey string `mapstructure:"apikey"`
+	}
 }
 
 var config *Config
