@@ -41,6 +41,49 @@ export async function postChartEdit(body: API.ChartEditRequest, options?: { [key
   });
 }
 
+/** 上传excel文件和目标信息，使用AI生成信息。 POST /api/chart/gen/ai */
+export async function postChartGenAi(
+  body: {
+    /** 图表名称 */
+    name: string;
+    /** 分析目标 */
+    goal: string;
+    /** 图表类型 */
+    chartType: string;
+  },
+  file?: File,
+  options?: { [key: string]: any },
+) {
+  const formData = new FormData();
+
+  if (file) {
+    formData.append('file', file);
+  }
+
+  Object.keys(body).forEach((ele) => {
+    const item = (body as any)[ele];
+
+    if (item !== undefined && item !== null) {
+      if (typeof item === 'object' && !(item instanceof File)) {
+        if (item instanceof Array) {
+          item.forEach((f) => formData.append(ele, f || ''));
+        } else {
+          formData.append(ele, JSON.stringify(item));
+        }
+      } else {
+        formData.append(ele, item);
+      }
+    }
+  });
+
+  return request<API.Response & { data?: API.ChartGenByAiResponse }>('/api/chart/gen/ai', {
+    method: 'POST',
+    data: formData,
+    requestType: 'form',
+    ...(options || {}),
+  });
+}
+
 /** 获取一个图表 GET /api/chart/get */
 export async function getChartGet(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)

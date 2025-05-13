@@ -1,6 +1,10 @@
 package service
 
 import (
+	"errors"
+	"fmt"
+	"mime/multipart"
+	"mrbi/internal/api/siliconflow"
 	"mrbi/internal/common"
 	"mrbi/internal/consts"
 	"mrbi/internal/ecode"
@@ -8,7 +12,9 @@ import (
 	resChart "mrbi/internal/model/dto/res/chart"
 	"mrbi/internal/model/entity"
 	"mrbi/internal/repository"
+	"mrbi/internal/utils"
 	"mrbi/pkg/db"
+	"strings"
 
 	"gorm.io/gorm"
 )
@@ -172,4 +178,120 @@ func (s *ChartService) EditChart(request *reqChart.ChartEditRequest, loginUser *
 		return false, ecode.GetErrWithDetail(ecode.SYSTEM_ERROR, "数据库操作错误")
 	}
 	return true, nil
+}
+
+// 根据excel文件、生成图表名称、目标和类型，返回生成结果
+func (s *ChartService) ChartGenByAi(excelFile *multipart.FileHeader, name, goal, chartType string, loginUser *entity.User) (*resChart.ChartGenByAiResponse, *ecode.ErrorWithCode) {
+	//文件存放至本地
+	dst, originErr := utils.SaveFileToLocal(excelFile)
+	if originErr != nil {
+		return nil, ecode.GetErrWithDetail(ecode.SYSTEM_ERROR, "文件保存失败")
+	} else {
+		defer utils.DeleteFile(dst)
+	}
+	data, originErr := utils.ExcelToCSV(dst)
+	if originErr != nil {
+		return nil, ecode.GetErrWithDetail(ecode.SYSTEM_ERROR, originErr.Error())
+	}
+
+	//构造AI调用请求参数
+	userRequirement := fmt.Sprintf("分析需求:%s", goal)
+	if chartType != "" {
+		userRequirement += fmt.Sprintf(",图表类型:%s", chartType)
+	}
+
+	//调用API
+	res, err := siliconflow.NewLLMChatReqeustNoContext(userRequirement, data)
+	if err != nil {
+		return nil, ecode.GetErrWithDetail(ecode.SYSTEM_ERROR, err.Error())
+	}
+
+	//提取res中的数据
+	genChart, genResult, err := s.GetGenResultAndChart(res.Choices[0].Message.Content)
+	if err != nil {
+		return nil, ecode.GetErrWithDetail(ecode.SYSTEM_ERROR, err.Error())
+	}
+	//构建图表入库
+	chart := &entity.Chart{
+		UserID:    loginUser.ID,
+		Name:      name,
+		Goal:      goal,
+		ChartData: data,
+		ChartType: chartType,
+		GenChart:  genChart,
+		GenResult: genResult,
+	}
+	id, err := s.ChartRepo.AddChart(nil, chart)
+	if err != nil {
+		return nil, ecode.GetErrWithDetail(ecode.SYSTEM_ERROR, "数据库操作错误")
+	}
+
+	return &resChart.ChartGenByAiResponse{
+		GenChart:  genChart,
+		GenResult: genResult,
+		ChartID:   id,
+	}, nil
+}
+
+// 从AI生成的文本中提取图表数据和结果，若未能成功提取返回错误
+func (s *ChartService) GetGenResultAndChart(text string) (optionPart string, analysisPart string, err error) {
+	// 查找 "option"
+	idx := strings.Index(text, "option")
+	if idx == -1 {
+		err = errors.New("'option' 关键字未找到")
+		return
+	}
+	// 查找 '='
+	eqIdx := strings.Index(text[idx:], "=")
+	if eqIdx == -1 {
+		err = errors.New("'=' 未在 'option' 之后找到")
+		return
+	}
+	// 查找第一个 '{'
+	braceStart := strings.Index(text[idx+eqIdx:], "{")
+	if braceStart == -1 {
+		err = errors.New("未找到 opening '{'")
+		return
+	}
+	// 计算绝对开始位置
+	start := idx + eqIdx + braceStart
+	// 查找匹配的 '}'
+	depth := 0
+	end := -1
+	for i := start; i < len(text); i++ {
+		switch text[i] {
+		case '{':
+			depth++
+		case '}':
+			depth--
+			if depth == 0 {
+				end = i
+				break
+			}
+		}
+	}
+	if end == -1 {
+		err = errors.New("未找到匹配的 closing '}'")
+		return
+	}
+	optionPart = strings.TrimSpace(text[start : end+1])
+
+	// 查找分析标题（兼容两种说法）
+	var headerIdx int
+	if i := strings.Index(text, "数据结论分析"); i != -1 {
+		headerIdx = i
+	} else if i := strings.Index(text, "数据分析结论"); i != -1 {
+		headerIdx = i
+	} else {
+		err = errors.New("未找到分析标题")
+		return
+	}
+	// 查找 ':' 之后的内容
+	colonIdx := strings.Index(text[headerIdx:], ":")
+	if colonIdx == -1 {
+		err = errors.New("分析标题之后未找到 ':'")
+		return
+	}
+	analysisPart = strings.TrimSpace(text[headerIdx+colonIdx+1:])
+	return
 }

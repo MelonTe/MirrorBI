@@ -22,7 +22,7 @@ func NewLLMChatReqeust(requirement string, csvData string) *openai.LLMRequest {
 		"{csv格式的原始数据源描述}\n" +
 		"响应格式要求如下:\n" +
 		"option = {代码}\n" +
-		"数据结论分析:{中文结论分析}\n")
+		"数据分析结论:{中文结论分析}\n")
 	return &openai.LLMRequest{
 		Model:       "Pro/deepseek-ai/DeepSeek-V3",
 		Temperature: 0.7,

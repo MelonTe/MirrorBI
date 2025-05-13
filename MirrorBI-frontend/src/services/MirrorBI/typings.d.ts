@@ -7,6 +7,7 @@ declare namespace API {
     genResult?: string;
     goal?: string;
     id?: string;
+    name?: string;
     updateTime?: string;
     userId?: string;
   };
@@ -31,6 +32,13 @@ declare namespace API {
     id?: string;
   };
 
+  type ChartGenByAiResponse = {
+    /** 生成的图表数据代码用于展示 */
+    genChart?: string;
+    /** 生成的图表结果 */
+    genResult?: string;
+  };
+
   type ChartQueryRequest = {
     /** 图表数据 */
     chartData?: string;
@@ -40,6 +48,8 @@ declare namespace API {
     current?: number;
     /** 目标 */
     goal?: string;
+    /** 图表名称 */
+    name?: string;
     /** 页面大小 */
     pageSize?: number;
     /** 排序字段 */

@@ -198,13 +198,28 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "图表生成信息",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/chart.ChartGenByAiRequest"
-                        }
+                        "type": "string",
+                        "example": "人数趋势",
+                        "description": "图表名称",
+                        "name": "name",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "了解用户增长",
+                        "description": "分析目标",
+                        "name": "goal",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "折线图",
+                        "description": "图表类型",
+                        "name": "chartType",
+                        "in": "formData",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -219,7 +234,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "boolean"
+                                            "$ref": "#/definitions/chart.ChartGenByAiResponse"
                                         }
                                     }
                                 }
@@ -962,19 +977,15 @@ const docTemplate = `{
                 }
             }
         },
-        "chart.ChartGenByAiRequest": {
+        "chart.ChartGenByAiResponse": {
             "type": "object",
             "properties": {
-                "chartType": {
-                    "description": "图表类型",
+                "genChart": {
+                    "description": "生成的图表数据代码用于展示",
                     "type": "string"
                 },
-                "goal": {
-                    "description": "分析目标",
-                    "type": "string"
-                },
-                "name": {
-                    "description": "图表名称",
+                "genResult": {
+                    "description": "生成的图表结果",
                     "type": "string"
                 }
             }

@@ -14,6 +14,10 @@ import (
 // dst为excel文件目标路径
 // 返回解析出的CSV内容和错误（CSV未落盘）
 func ExcelToCSV(dst string) (string, error) {
+	//校验目标文件是否是excel文件
+	if !strings.HasSuffix(dst, ".xlsx") && !strings.HasSuffix(dst, ".xls") {
+		return "", fmt.Errorf("目标文件不是excel文件")
+	}
 	//打开excel文件
 	f, err := excelize.OpenFile(dst)
 	if err != nil {
