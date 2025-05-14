@@ -1,107 +1,246 @@
 import { postChartGenAi } from '@/services/MirrorBI/chart';
-import { UploadOutlined } from '@ant-design/icons';
-import { Button, Form, Input, message, Select, Space, Upload } from 'antd';
+import {
+  AreaChartOutlined,
+  BarChartOutlined,
+  LineChartOutlined,
+  PieChartOutlined,
+  RadarChartOutlined,
+  UploadOutlined,
+} from '@ant-design/icons';
+import {
+  Button,
+  Card,
+  Col,
+  Divider,
+  Form,
+  Input,
+  message,
+  Row,
+  Select,
+  Space,
+  Spin,
+  Typography,
+  Upload,
+} from 'antd';
 import TextArea from 'antd/es/input/TextArea';
 import ReactECharts from 'echarts-for-react';
+import { motion } from 'framer-motion';
+import JSON5 from 'json5';
 import React, { useState } from 'react';
+import './index.less';
+
+const { Title, Paragraph } = Typography;
+
+const ChartTypeOption = ({ icon, label }: { icon: React.ReactNode; label: string }) => (
+  <Space>
+    {icon}
+    <span>{label}</span>
+  </Space>
+);
+
 const AddChart: React.FC = () => {
+  const [option, setOption] = useState<any>();
   const [chart, setChart] = useState<API.ChartGenByAiResponse>();
-  // 提交中的状态，默认未提交
   const [submitting, setSubmitting] = useState<boolean>(false);
+  const [analyzing, setAnalyzing] = useState<boolean>(false);
+  const [form] = Form.useForm();
+
   const onFinish = async (values: any) => {
+    console.log('values', values);
     if (submitting) {
       return;
     }
-    // 当开始提交，把submitting设置为true
     setSubmitting(true);
+    setAnalyzing(true);
 
-    // 看看能否得到用户的输入
     const params = {
       ...values,
       file: undefined,
     };
     try {
-      const res = await postChartGenAi(params, values.file.file.originFileObj, {});
+      const res = await postChartGenAi(params, values.file?.file, {});
       console.log('res', res);
       if (!res?.data) {
         message.error('分析失败,' + res?.message);
       } else {
-        message.success('图表分析成功');
-        setChart(res.data);
+        message.success('分析成功');
+        try {
+          const chartOption = JSON5.parse(res.data.genChart ?? '');
+          if (!chartOption) {
+            throw new Error('图表代码解析错误');
+          } else {
+            setChart(res.data);
+            setOption(chartOption);
+          }
+        } catch (e: any) {
+          message.error('图表代码解析错误: ' + e.message);
+        }
       }
     } catch (e: any) {
       message.error('分析失败,' + e.message);
     }
     setSubmitting(false);
+    setAnalyzing(false);
+  };
+
+  const resetForm = () => {
+    form.resetFields();
+    setOption(undefined);
+    setChart(undefined);
   };
 
   return (
-    // 把页面内容指定一个类名add-chart
-    <div className="add-chart">
-      <Form
-        // 表单名称改为addChart
-        name="addChart"
-        onFinish={onFinish}
-        // 初始化数据啥都不填，为空
-        initialValues={{}}
+    <div className="add-chart-container">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
       >
-        {/* 前端表单的name，对应后端接口请求参数里的字段，
-  此处name对应后端分析目标goal,label是左侧的提示文本，
-  rules=....是必填项提示*/}
-        <Form.Item
-          name="goal"
-          label="分析目标"
-          rules={[{ required: true, message: '请输入分析目标!' }]}
+        <Card className="form-card" bordered={false}>
+          <Title level={2} className="page-title">
+            <BarChartOutlined /> 智能数据分析
+          </Title>
+          <Paragraph className="page-description">
+            上传您的Excel文件，描述您的分析需求，让AI为您生成精美的数据可视化图表
+          </Paragraph>
+          <Divider />
+
+          <Form
+            form={form}
+            name="addChart"
+            onFinish={onFinish}
+            initialValues={{}}
+            layout="vertical"
+            className="analysis-form"
+          >
+            <Row gutter={24}>
+              <Col xs={24} lg={12}>
+                <Form.Item
+                  name="goal"
+                  label="分析目标"
+                  rules={[{ required: true, message: '请输入分析目标!' }]}
+                >
+                  <TextArea
+                    placeholder="请输入您的分析需求，比如：分析网站用户的增长情况"
+                    autoSize={{ minRows: 3, maxRows: 6 }}
+                    className="custom-textarea"
+                  />
+                </Form.Item>
+              </Col>
+              <Col xs={24} lg={12}>
+                <Form.Item name="name" label="图表名称">
+                  <Input placeholder="请输入图表名称" className="custom-input" />
+                </Form.Item>
+
+                <Form.Item name="chartType" label="图表类型">
+                  <Select
+                    placeholder="请选择图表类型"
+                    className="chart-type-select"
+                    options={[
+                      {
+                        value: '折线图',
+                        label: <ChartTypeOption icon={<LineChartOutlined />} label="折线图" />,
+                      },
+                      {
+                        value: '柱状图',
+                        label: <ChartTypeOption icon={<BarChartOutlined />} label="柱状图" />,
+                      },
+                      {
+                        value: '堆叠图',
+                        label: <ChartTypeOption icon={<AreaChartOutlined />} label="堆叠图" />,
+                      },
+                      {
+                        value: '饼图',
+                        label: <ChartTypeOption icon={<PieChartOutlined />} label="饼图" />,
+                      },
+                      {
+                        value: '雷达图',
+                        label: <ChartTypeOption icon={<RadarChartOutlined />} label="雷达图" />,
+                      },
+                    ]}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Form.Item name="file" label="原始数据" className="upload-container">
+              <Upload.Dragger
+                name="file"
+                accept=".xlsx,.xls,.csv"
+                beforeUpload={() => false}
+                maxCount={1}
+              >
+                <p className="ant-upload-drag-icon">
+                  <UploadOutlined />
+                </p>
+                <p className="ant-upload-text">点击或拖拽Excel文件到此区域上传</p>
+                <p className="ant-upload-hint">支持 .xlsx, .xls 格式文件</p>
+              </Upload.Dragger>
+            </Form.Item>
+
+            <Form.Item className="form-actions">
+              <Space>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  loading={submitting}
+                  disabled={submitting}
+                  className="analysis-btn"
+                  size="large"
+                >
+                  开始智能分析
+                </Button>
+                <Button htmlType="button" onClick={resetForm} size="large">
+                  重置
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
+        </Card>
+      </motion.div>
+
+      {analyzing && !chart && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="loading-container">
+          <Spin size="large" />
+          <p className="loading-text">正在分析数据，请稍候...</p>
+        </motion.div>
+      )}
+
+      {chart && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="result-container"
         >
-          {/* placeholder文本框内的提示语 */}
-          <TextArea placeholder="请输入你的分析需求，比如：分析网站用户的增长情况" />
-        </Form.Item>
+          <Card className="result-card" bordered={false}>
+            <Title level={3} className="result-title">
+              分析结果
+            </Title>
+            <Divider />
 
-        {/* 还要输入图表名称 */}
-        <Form.Item name="name" label="图表名称">
-          <Input placeholder="请输入图表名称" />
-        </Form.Item>
+            <div className="conclusion-section">
+              <Title level={4}>分析结论</Title>
+              <div className="conclusion-content">{chart?.genResult}</div>
+            </div>
 
-        {/* 图表类型是非必填，所以不做校验 */}
-        <Form.Item name="selchartTypeect" label="图表类型">
-          <Select
-            options={[
-              { value: '折线图', label: '折线图' },
-              { value: '柱状图', label: '柱状图' },
-              { value: '堆叠图', label: '堆叠图' },
-              { value: '饼图', label: '饼图' },
-              { value: '雷达图', label: '雷达图' },
-            ]}
-          />
-        </Form.Item>
-
-        {/* 文件上传 */}
-        <Form.Item name="file" label="原始数据">
-          {/* action:当你把文件上传之后，他会把文件上传至哪个接口。
-      这里肯定是调用自己的后端，先不用这个 */}
-          <Upload name="file">
-            <Button icon={<UploadOutlined />}>上传 EXCEL 文件</Button>
-          </Upload>
-        </Form.Item>
-
-        <Form.Item wrapperCol={{ span: 12, offset: 6 }}>
-          <Space>
-            <Button type="primary" htmlType="submit" loading={submitting} disabled={submitting}>
-              智能分析
-            </Button>
-            <Button htmlType="reset">重置</Button>
-          </Space>
-        </Form.Item>
-      </Form>
-      <div>分析结论：{chart?.genResult}</div>
-      <div>
-        生成图表：
-        {
-          // 后端返回的代码是字符串，不是对象，用JSON.parse解析成对象
-          option && <ReactECharts option={option} />
-        }
-      </div>
+            <div className="chart-section">
+              <Title level={4}>图表可视化</Title>
+              {option && (
+                <div className="chart-container">
+                  <ReactECharts
+                    option={option}
+                    style={{ height: '500px', width: '100%' }}
+                    className="echarts-instance"
+                  />
+                </div>
+              )}
+            </div>
+          </Card>
+        </motion.div>
+      )}
     </div>
   );
 };
+
 export default AddChart;
