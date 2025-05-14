@@ -29,6 +29,10 @@ definitions:
     type: object
   chart.ChartGenByAiResponse:
     properties:
+      chartId:
+        description: 图表ID
+        example: ""
+        type: string
       genChart:
         description: 生成的图表数据代码用于展示
         type: string
@@ -106,7 +110,8 @@ definitions:
     type: object
   entity.Chart:
     properties:
-      chartData:
+      chartDataId:
+        example: ""
         type: string
       chartType:
         type: string
@@ -359,6 +364,35 @@ paths:
           schema:
             $ref: '#/definitions/common.Response'
       summary: 添加一个图表
+      tags:
+      - chart
+  /api/chart/data:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 图表的ID
+        in: query
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 信息获取成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: 获取失败，详情见响应中的code
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 根据chart表的ID，获取上传的原始EXCEL的JSON格式数据
       tags:
       - chart
   /api/chart/delete:

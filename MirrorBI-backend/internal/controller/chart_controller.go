@@ -41,7 +41,7 @@ func AddChart(c *gin.Context) {
 		common.BaseResponse(c, nil, err.Msg, err.Code)
 		return
 	}
-	if id, err := sChart.AddChart(cAdd.Goal, cAdd.ChartData, cAdd.ChartType, loginUser.ID); err != nil {
+	if id, err := sChart.AddChart(cAdd.Goal, cAdd.ChartData, cAdd.ChartType, loginUser.ID, "", ""); err != nil {
 		common.BaseResponse(c, nil, err.Msg, err.Code)
 		return
 	} else {
@@ -218,4 +218,39 @@ func ChartGenByAi(c *gin.Context) {
 		return
 	}
 	common.Success(c, *res)
+}
+
+// GetChartData godoc
+// @Summary      根据chart表的ID，获取上传的原始EXCEL的JSON格式数据
+// @Tags         chart
+// @Accept       json
+// @Produce      json
+// @Param		id query string true "图表的ID"
+// @Success      200  {object}  common.Response{data=bool} "信息获取成功"
+// @Failure      400  {object}  common.Response "获取失败，详情见响应中的code"
+// @Router       /api/chart/data [GET]
+func GetChartData(c *gin.Context) {
+	id := c.Query("id")
+	if id == "" {
+		common.BaseResponse(c, nil, "参数缺失", ecode.PARAMS_ERROR)
+		return
+	}
+	id_parse, err := strconv.ParseUint(id, 10, 64)
+	if err != nil {
+		common.BaseResponse(c, nil, "参数错误", ecode.PARAMS_ERROR)
+		return
+	}
+	loginUser, ERR := sUser.GetLoginUser(c)
+	if err != nil {
+		common.BaseResponse(c, nil, ERR.Msg, ERR.Code)
+		return
+	}
+	if chartData, err := sChart.GetChartDataById(id_parse, loginUser); err != nil {
+		common.BaseResponse(c, nil, err.Msg, err.Code)
+		return
+	} else {
+		data := chartData.Data
+		common.Success(c, data)
+		return
+	}
 }

@@ -67,3 +67,29 @@ func (r *ChartRepository) UpdateChartByMap(tx *gorm.DB, chartId uint64, updateMa
 	}
 	return nil
 }
+
+// 添加ChartDataJSON
+func (r *ChartRepository) AddChartDataJSON(tx *gorm.DB, chartData *entity.ChartDataJSON) (uint64, error) {
+	if tx == nil {
+		tx = r.db
+	}
+	if err := tx.Create(chartData).Error; err != nil {
+		return 0, err
+	}
+	return chartData.ID, nil
+}
+
+// 根据图表Id查找图表数据，无记录返回空指针
+func (r *ChartRepository) FindChartDataByChartDataId(tx *gorm.DB, chartId uint64) (*entity.ChartDataJSON, error) {
+	if tx == nil {
+		tx = r.db
+	}
+	var chartData entity.ChartDataJSON
+	if err := tx.Where("id = ?", chartId).First(&chartData).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil //无记录
+		}
+		return nil, err //数据库查询异常
+	}
+	return &chartData, nil
+}

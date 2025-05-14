@@ -52,11 +52,12 @@ func SetupRoutes(r *gin.Engine) {
 	chartAPI := api.Group("/chart")
 	{
 		chartAPI.POST("/list/page", controller.ListChartByPage)
-		chartAPI.POST("/list/page/my", controller.ListMyChartByPage)
+		chartAPI.POST("/list/page/my", middleware.LoginCheck(), controller.ListMyChartByPage)
 		chartAPI.POST("/add", middleware.LoginCheck(), controller.AddChart)
 		chartAPI.POST("/delete", middleware.LoginCheck(), controller.DeleteChart)
 		chartAPI.GET("/get", controller.GetChartById)
 		chartAPI.POST("/edit", middleware.LoginCheck(), controller.EditChart)
 		chartAPI.POST("/gen/ai", middleware.LoginCheck(), controller.ChartGenByAi)
+		chartAPI.GET("/data", middleware.LoginCheck(), controller.GetChartData)
 	}
 }

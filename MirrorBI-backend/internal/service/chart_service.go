@@ -1,8 +1,11 @@
 package service
 
 import (
+	"encoding/csv"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"mime/multipart"
 	"mrbi/internal/api/siliconflow"
 	"mrbi/internal/common"
@@ -14,8 +17,10 @@ import (
 	"mrbi/internal/repository"
 	"mrbi/internal/utils"
 	"mrbi/pkg/db"
+	"strconv"
 	"strings"
 
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -29,7 +34,7 @@ func NewChartService() *ChartService {
 	}
 }
 
-func (s *ChartService) AddChart(goal string, chartData string, chartType string, userId uint64) (uint64, *ecode.ErrorWithCode) {
+func (s *ChartService) AddChart(goal string, chartData string, chartType string, userId uint64, genChart, genResult string) (uint64, *ecode.ErrorWithCode) {
 	// 1.校验
 	if chartData == "" || chartType == "" {
 		return 0, ecode.GetErrWithDetail(ecode.PARAMS_ERROR, "参数为空")
@@ -41,20 +46,101 @@ func (s *ChartService) AddChart(goal string, chartData string, chartType string,
 		return 0, ecode.GetErrWithDetail(ecode.PARAMS_ERROR, "图表类型过短")
 	}
 
-	// 2.添加图表
+	// 2.添加图表，开启事务
+	tx := s.ChartRepo.BeginTransaction()
+	//数据转化为JSON
+	jsonData, err := s.ConvertChartDataToJSON(chartData)
+	if err != nil {
+		tx.Rollback()
+		return 0, err
+	}
+	//构造图表对象
+	chartJsonData := &entity.ChartDataJSON{
+		Data: datatypes.JSON([]byte(jsonData)),
+	}
 	chart := &entity.Chart{
 		UserID:    userId,
-		ChartData: chartData,
 		ChartType: chartType,
 		Goal:      goal,
+		GenChart:  genChart,
+		GenResult: genResult,
 	}
-	id, err := s.ChartRepo.AddChart(nil, chart)
-	if err != nil {
+	//先存储chartData
+	chartDataId, originErr := s.ChartRepo.AddChartDataJSON(tx, chartJsonData)
+	if originErr != nil {
+		tx.Rollback()
+		return 0, ecode.GetErrWithDetail(ecode.SYSTEM_ERROR, "数据库操作错误")
+	}
+	//设置Chart的chartDataId
+	chart.ChartDataID = chartDataId
+	id, originErr := s.ChartRepo.AddChart(nil, chart)
+	if originErr != nil {
+		tx.Rollback()
+		return 0, ecode.GetErrWithDetail(ecode.SYSTEM_ERROR, "数据库操作错误")
+	}
+	//提交事务
+	if err := tx.Commit().Error; err != nil {
 		return 0, ecode.GetErrWithDetail(ecode.SYSTEM_ERROR, "数据库操作错误")
 	}
 	return id, nil
 }
 
+// 将ChartData转化为JSON数据
+func (s *ChartService) ConvertChartDataToJSON(chartData string) (string, *ecode.ErrorWithCode) {
+	// 1.校验
+	if chartData == "" {
+		return "", ecode.GetErrWithDetail(ecode.PARAMS_ERROR, "表为空")
+	}
+	// 2.转换
+	r := csv.NewReader(strings.NewReader(chartData))
+	// 如果你的 CSV 里用的是其他分隔符，可选： r.Comma = '\t'
+
+	// 1. 读表头
+	headers, err := r.Read()
+	if err == io.EOF {
+		return "[]", nil
+	}
+	if err != nil {
+		return "", ecode.GetErrWithDetail(ecode.SYSTEM_ERROR, "读取表头错误")
+	}
+
+	// 2. 逐行读取
+	var records []map[string]interface{}
+	for {
+		row, err := r.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return "", ecode.GetErrWithDetail(ecode.SYSTEM_ERROR, "读取数据行错误")
+		}
+		// 每行要和表头一样长，不足的补空字符串，多余的忽略
+		m := make(map[string]interface{}, len(headers))
+		for i, key := range headers {
+			var v interface{} = ""
+			if i < len(row) {
+				cell := row[i]
+				// 尝试转换为整数
+				if n, err := strconv.ParseInt(cell, 10, 64); err == nil {
+					v = n
+				} else if f, err := strconv.ParseFloat(cell, 64); err == nil {
+					v = f
+				} else {
+					v = cell
+				}
+			}
+			m[key] = v
+		}
+		records = append(records, m)
+	}
+
+	// 3. 序列化成 JSON
+	out, err := json.MarshalIndent(records, "", "  ")
+	if err != nil {
+		return "", ecode.GetErrWithDetail(ecode.SYSTEM_ERROR, "序列化数据成 JSON 错误")
+	}
+	return string(out), nil
+}
 func (s *ChartService) DeleteChart(chartId uint64, loginUser *entity.User) (bool, *ecode.ErrorWithCode) {
 	// 1.校验
 	if chartId == 0 {
@@ -121,7 +207,13 @@ func (s *ChartService) GetQueryWrapper(db *gorm.DB, req *reqChart.ChartQueryRequ
 func (s *ChartService) ListChartsByPage(req *reqChart.ChartQueryRequest) (*resChart.ListChartResponse, *ecode.ErrorWithCode) {
 	//参数校验
 	if req.Current <= 0 || req.PageSize <= 0 {
-		return nil, ecode.GetErrWithDetail(ecode.PARAMS_ERROR, "页数或者页面大小不能小于0")
+		//自动设置，默认为第一页，10条
+		if req.Current <= 0 {
+			req.Current = 1
+		}
+		if req.PageSize <= 0 || req.PageSize > 20 {
+			req.PageSize = 10
+		}
 	}
 	//获取查询对象
 	query, err := s.GetQueryWrapper(db.LoadDB(), req)
@@ -182,7 +274,7 @@ func (s *ChartService) EditChart(request *reqChart.ChartEditRequest, loginUser *
 
 // 根据excel文件、生成图表名称、目标和类型，返回生成结果
 func (s *ChartService) ChartGenByAi(excelFile *multipart.FileHeader, name, goal, chartType string, loginUser *entity.User) (*resChart.ChartGenByAiResponse, *ecode.ErrorWithCode) {
-	//文件存放至本地
+	//文件存放至本地，需要校验文件不能＞20MB
 	dst, originErr := utils.SaveFileToLocal(excelFile)
 	if originErr != nil {
 		return nil, ecode.GetErrWithDetail(ecode.SYSTEM_ERROR, "文件保存失败")
@@ -212,20 +304,10 @@ func (s *ChartService) ChartGenByAi(excelFile *multipart.FileHeader, name, goal,
 		return nil, ecode.GetErrWithDetail(ecode.SYSTEM_ERROR, err.Error())
 	}
 	//构建图表入库
-	chart := &entity.Chart{
-		UserID:    loginUser.ID,
-		Name:      name,
-		Goal:      goal,
-		ChartData: data,
-		ChartType: chartType,
-		GenChart:  genChart,
-		GenResult: genResult,
+	id, ERR := s.AddChart(goal, data, chartType, loginUser.ID, genChart, genResult)
+	if ERR != nil {
+		return nil, ERR
 	}
-	id, err := s.ChartRepo.AddChart(nil, chart)
-	if err != nil {
-		return nil, ecode.GetErrWithDetail(ecode.SYSTEM_ERROR, "数据库操作错误")
-	}
-
 	return &resChart.ChartGenByAiResponse{
 		GenChart:  genChart,
 		GenResult: genResult,
@@ -294,4 +376,35 @@ func (s *ChartService) GetGenResultAndChart(text string) (optionPart string, ana
 	}
 	analysisPart = strings.TrimSpace(text[headerIdx+colonIdx+1:])
 	return
+}
+
+// 根据Chart表的I获取图表数据
+func (s *ChartService) GetChartDataById(chartId uint64, loginUser *entity.User) (*entity.ChartDataJSON, *ecode.ErrorWithCode) {
+	// 1.校验
+	if chartId == 0 {
+		return nil, ecode.GetErrWithDetail(ecode.PARAMS_ERROR, "参数错误")
+	}
+	// 2.获取图表数据，校验是否是本人或者管理员获取
+	chart, err := s.ChartRepo.FindById(nil, chartId)
+	if err != nil {
+		return nil, ecode.GetErrWithDetail(ecode.SYSTEM_ERROR, "数据库操作错误")
+	}
+	if chart == nil {
+		return nil, ecode.GetErrWithDetail(ecode.NOT_FOUND_ERROR, "图表不存在")
+	}
+	if chart.UserID != loginUser.ID && loginUser.UserRole != consts.ADMIN_ROLE {
+		return nil, ecode.GetErrWithDetail(ecode.FORBIDDEN_ERROR, "没有权限获取该图表数据")
+	}
+	//获取图表数据
+	var chartData *entity.ChartDataJSON
+	if chartId != 0 {
+		chartData, err = s.ChartRepo.FindChartDataByChartDataId(nil, chart.ChartDataID)
+	}
+	if err != nil {
+		return nil, ecode.GetErrWithDetail(ecode.SYSTEM_ERROR, "数据库操作错误")
+	}
+	if chartData == nil {
+		return nil, ecode.GetErrWithDetail(ecode.NOT_FOUND_ERROR, "图表数据不存在")
+	}
+	return chartData, nil
 }

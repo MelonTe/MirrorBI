@@ -75,6 +75,55 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/chart/data": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chart"
+                ],
+                "summary": "根据chart表的ID，获取上传的原始EXCEL的JSON格式数据",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "图表的ID",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "信息获取成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "获取失败，详情见响应中的code",
+                        "schema": {
+                            "$ref": "#/definitions/common.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/chart/delete": {
             "post": {
                 "consumes": [
@@ -980,6 +1029,11 @@ const docTemplate = `{
         "chart.ChartGenByAiResponse": {
             "type": "object",
             "properties": {
+                "chartId": {
+                    "description": "图表ID",
+                    "type": "string",
+                    "example": ""
+                },
                 "genChart": {
                     "description": "生成的图表数据代码用于展示",
                     "type": "string"
@@ -1089,8 +1143,9 @@ const docTemplate = `{
         "entity.Chart": {
             "type": "object",
             "properties": {
-                "chartData": {
-                    "type": "string"
+                "chartDataId": {
+                    "type": "string",
+                    "example": ""
                 },
                 "chartType": {
                     "type": "string"
