@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
@@ -17,6 +18,7 @@ import (
 	"mrbi/internal/repository"
 	"mrbi/internal/utils"
 	"mrbi/pkg/db"
+	"mrbi/pkg/rds"
 	"strconv"
 	"strings"
 
@@ -34,7 +36,7 @@ func NewChartService() *ChartService {
 	}
 }
 
-func (s *ChartService) AddChart(goal string, chartData string, chartType string, userId uint64, genChart, genResult string) (uint64, *ecode.ErrorWithCode) {
+func (s *ChartService) AddChart(goal string, chartData string, chartType string, userId uint64, genChart, genResult string, name string) (uint64, *ecode.ErrorWithCode) {
 	// 1.校验
 	if chartData == "" || chartType == "" {
 		return 0, ecode.GetErrWithDetail(ecode.PARAMS_ERROR, "参数为空")
@@ -64,6 +66,7 @@ func (s *ChartService) AddChart(goal string, chartData string, chartType string,
 		Goal:      goal,
 		GenChart:  genChart,
 		GenResult: genResult,
+		Name:      name,
 	}
 	//先存储chartData
 	chartDataId, originErr := s.ChartRepo.AddChartDataJSON(tx, chartJsonData)
@@ -274,6 +277,14 @@ func (s *ChartService) EditChart(request *reqChart.ChartEditRequest, loginUser *
 
 // 根据excel文件、生成图表名称、目标和类型，返回生成结果
 func (s *ChartService) ChartGenByAi(excelFile *multipart.FileHeader, name, goal, chartType string, loginUser *entity.User) (*resChart.ChartGenByAiResponse, *ecode.ErrorWithCode) {
+	//先尝试获取令牌
+	acquire, originErr := rds.GetAIRateLimiter().Allow(context.Background(), "AI-Chart-Gen", 1)
+	if originErr != nil {
+		return nil, ecode.GetErrWithDetail(ecode.SYSTEM_ERROR, "获取令牌失败")
+	}
+	if !acquire {
+		return nil, ecode.GetErrWithDetail(ecode.SYSTEM_ERROR, "请求过于频繁,请稍后再试")
+	}
 	//文件存放至本地，需要校验文件不能＞20MB
 	dst, originErr := utils.SaveFileToLocal(excelFile)
 	if originErr != nil {
@@ -304,7 +315,7 @@ func (s *ChartService) ChartGenByAi(excelFile *multipart.FileHeader, name, goal,
 		return nil, ecode.GetErrWithDetail(ecode.SYSTEM_ERROR, err.Error())
 	}
 	//构建图表入库
-	id, ERR := s.AddChart(goal, data, chartType, loginUser.ID, genChart, genResult)
+	id, ERR := s.AddChart(goal, data, chartType, loginUser.ID, genChart, genResult, name)
 	if ERR != nil {
 		return nil, ERR
 	}

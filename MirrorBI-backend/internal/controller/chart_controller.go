@@ -41,7 +41,7 @@ func AddChart(c *gin.Context) {
 		common.BaseResponse(c, nil, err.Msg, err.Code)
 		return
 	}
-	if id, err := sChart.AddChart(cAdd.Goal, cAdd.ChartData, cAdd.ChartType, loginUser.ID, "", ""); err != nil {
+	if id, err := sChart.AddChart(cAdd.Goal, cAdd.ChartData, cAdd.ChartType, loginUser.ID, "", "", ""); err != nil {
 		common.BaseResponse(c, nil, err.Msg, err.Code)
 		return
 	} else {
@@ -210,6 +210,10 @@ func ChartGenByAi(c *gin.Context) {
 	Name := c.PostForm("name")
 	Goal := c.PostForm("goal")
 	ChartType := c.PostForm("chartType")
+	if file == nil {
+		common.BaseResponse(c, nil, "文件不能为空", ecode.PARAMS_ERROR)
+		return
+	}
 	//调用生成服务
 	loginUser, _ := sUser.GetLoginUser(c)
 	res, err := sChart.ChartGenByAi(file, Name, Goal, ChartType, loginUser)

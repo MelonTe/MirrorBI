@@ -3,13 +3,19 @@ package rds
 import (
 	"context"
 	"fmt"
-	"github.com/redis/go-redis/v9"
 	"log"
 	"mrbi/config"
 	"mrbi/pkg/redlock"
+	"time"
+
+	"github.com/MelonTe/go-redis-tokenbucket"
+	"github.com/redis/go-redis/v9"
 )
 
 var redisClient *redis.Client
+
+// 令牌桶
+var rateAILimiter *ratelimit.TokenBucketLimiter
 
 func init() {
 	var config = config.LoadConfig()
@@ -32,10 +38,16 @@ func init() {
 	}
 	//初始化redis分布式锁
 	redlock.InitRedSync(redisClient)
+	//初始化AI令牌桶，每秒最多访问两次
+	rateAILimiter = ratelimit.NewTokenBucketLimiter(redisClient, ratelimit.SetCapacity(2), ratelimit.SetRate(500*time.Millisecond))
 }
 
 func GetRedisClient() *redis.Client {
 	return redisClient
+}
+
+func GetAIRateLimiter() *ratelimit.TokenBucketLimiter {
+	return rateAILimiter
 }
 
 func IsNilErr(err error) bool {
