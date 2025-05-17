@@ -1,0 +1,111 @@
+.chart-detail-container {
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 40px 0;
+  background: linear-gradient(to bottom, #f0f5ff 0%, #f5f7fa 100%);
+
+  .detail-card {
+    position: relative;
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 32px 40px 40px 40px;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 4px 16px rgba(0, 55, 140, 0.08);
+  }
+
+  .back-btn {
+    position: absolute;
+    top: 32px;
+    left: 32px;
+    z-index: 2;
+    padding: 4px 16px;
+    color: #1890ff;
+    font-weight: 500;
+    background: #f5f7fa;
+    border: none;
+    border-radius: 8px;
+    transition: all 0.2s;
+    &:hover {
+      color: #36cfc9;
+      background: #e6f7ff;
+    }
+  }
+
+  .loading-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+  }
+
+  .chart-title {
+    margin-top: 16px;
+    margin-bottom: 12px;
+    font-weight: 700;
+    font-size: 28px;
+    background: linear-gradient(90deg, #1890ff 0%, #36cfc9 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .chart-descs {
+    margin-bottom: 24px;
+    .ant-descriptions-item-label {
+      color: #1890ff;
+      font-weight: 500;
+    }
+    .ant-descriptions-item-content {
+      color: rgba(0, 0, 0, 0.85);
+    }
+  }
+
+  .chart-section {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 360px;
+    margin-bottom: 32px;
+    padding: 24px 16px 8px 16px;
+    background: linear-gradient(90deg, #f9fcff 0%, #f5f7fa 100%);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(24, 144, 255, 0.06);
+  }
+
+  .ai-result-section {
+    margin-bottom: 32px;
+    .ai-result-text {
+      padding: 16px;
+      color: #333;
+      font-size: 16px;
+      line-height: 1.7;
+      background: #f8faff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(24, 144, 255, 0.04);
+    }
+  }
+
+  .raw-data-section {
+    margin-bottom: 0;
+    .ant-btn-primary {
+      font-weight: 500;
+      background: linear-gradient(90deg, #1890ff 0%, #36cfc9 100%);
+      border: none;
+      border-radius: 8px;
+      transition: all 0.2s;
+      &:hover {
+        background: linear-gradient(90deg, #36cfc9 0%, #1890ff 100%);
+        box-shadow: 0 4px 12px rgba(24, 144, 255, 0.18);
+      }
+    }
+    .raw-table-area {
+      margin-top: 24px;
+      padding: 16px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(24, 144, 255, 0.04);
+    }
+  }
+}

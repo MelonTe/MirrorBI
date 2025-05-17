@@ -1,15 +1,26 @@
-import { postChartListPageMy } from '@/services/MirrorBI/chart';
+import {
+  getChartData,
+  postChartListPageMy,
+  postChartListPageMyNo,
+  postChartOpenApiDelete,
+} from '@/services/MirrorBI/chart';
 import { getUserGetLogin } from '@/services/MirrorBI/user';
 import {
   AreaChartOutlined,
   BarChartOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  CloseCircleOutlined,
   DeleteOutlined,
   EditOutlined,
   LineChartOutlined,
+  LoadingOutlined,
   PieChartOutlined,
   RadarChartOutlined,
   SearchOutlined,
+  SyncOutlined,
 } from '@ant-design/icons';
+import { useNavigate } from '@umijs/max';
 import {
   Button,
   Card,
@@ -58,6 +69,44 @@ const getChartTypeIcon = (chartType?: string) => {
 };
 
 /**
+ * 获取状态图标
+ * @param status 状态
+ */
+const getStatusIcon = (status?: string) => {
+  switch (status) {
+    case 'succeed':
+      return <CheckCircleOutlined style={{ color: '#52c41a' }} />;
+    case 'wait':
+      return <ClockCircleOutlined style={{ color: '#1890ff' }} />;
+    case 'running':
+      return <LoadingOutlined style={{ color: '#1890ff' }} />;
+    case 'failed':
+      return <CloseCircleOutlined style={{ color: '#ff4d4f' }} />;
+    default:
+      return <ClockCircleOutlined style={{ color: '#1890ff' }} />;
+  }
+};
+
+/**
+ * 获取状态文本
+ * @param status 状态
+ */
+const getStatusText = (status?: string) => {
+  switch (status) {
+    case 'succeed':
+      return '执行成功';
+    case 'wait':
+      return '等待执行';
+    case 'running':
+      return '正在执行';
+    case 'failed':
+      return '执行失败';
+    default:
+      return '未知状态';
+  }
+};
+
+/**
  * 我的图表页面
  * @constructor
  */
@@ -80,6 +129,15 @@ const MyChartPage: React.FC = () => {
 
   // 添加用户信息状态
   const [currentUser, setCurrentUser] = useState<API.UserLoginVO>();
+
+  const navigate = useNavigate();
+
+  // 状态区分页参数和数据
+  const initStatusParams = { pageSize: 6, current: 1 };
+  const [statusParams, setStatusParams] = useState<API.ChartQueryRequest>({ ...initStatusParams });
+  const [statusList, setStatusList] = useState<API.Chart[]>([]);
+  const [statusTotal, setStatusTotal] = useState<number>(0);
+  const [statusLoading, setStatusLoading] = useState<boolean>(false);
 
   // 处理图表实例事件
   const onChartReady = (instance: any, chartId: string) => {
@@ -137,7 +195,7 @@ const MyChartPage: React.FC = () => {
     setLoading(true);
     try {
       const res = await postChartListPageMy(searchParams);
-
+      getChartData;
       if (res.data) {
         setChartList(res.data.records ?? []);
         setTotal(res.data.total ?? 0);
@@ -180,6 +238,44 @@ const MyChartPage: React.FC = () => {
   useEffect(() => {
     loadData();
   }, [searchParams]);
+
+  // 刷新图表状态
+  const handleRefresh = () => {
+    loadData();
+  };
+
+  // 加载“图表执行状态”数据
+  const loadStatusData = async () => {
+    setStatusLoading(true);
+    try {
+      const res = await postChartListPageMyNo(statusParams);
+      if (res.data) {
+        setStatusList(res.data.records ?? []);
+        setStatusTotal(res.data.total ?? 0);
+      } else {
+        message.error('获取未成功图表失败');
+      }
+    } catch (e: any) {
+      message.error('获取未成功图表失败,' + e.message);
+    } finally {
+      setStatusLoading(false);
+    }
+  };
+
+  // 状态区分页变化
+  const handleStatusPageChange = (page: number, pageSize: number) => {
+    setStatusParams({ ...statusParams, current: page, pageSize });
+  };
+
+  // 状态区刷新
+  const handleStatusRefresh = () => {
+    loadStatusData();
+  };
+
+  // 状态区数据变化时加载
+  useEffect(() => {
+    loadStatusData();
+  }, [statusParams]);
 
   // 页面动画变体
   const containerVariants = {
@@ -254,6 +350,22 @@ const MyChartPage: React.FC = () => {
     return optimizedOption;
   };
 
+  // 删除图表
+  const handleDelete = async (chartId: string) => {
+    try {
+      const res = await postChartOpenApiDelete({ id: chartId });
+      if (res.code === 0) {
+        message.success('删除成功');
+        // 重新加载数据
+        loadData();
+      } else {
+        message.error('删除失败：' + res.message);
+      }
+    } catch (e: any) {
+      message.error('删除失败：' + e.message);
+    }
+  };
+
   return (
     <div className="my-chart-container">
       <motion.div
@@ -302,17 +414,94 @@ const MyChartPage: React.FC = () => {
           </div>
         ) : (
           <>
-            {!chartList || chartList.length === 0 ? (
-              <Empty description="暂无图表数据" className="empty-container" />
-            ) : (
-              <motion.div
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-                className="chart-grid"
-              >
-                <Row gutter={[40, 40]}>
-                  {chartList.map((chart) => {
+            {/* 状态展示区域 */}
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="status-section"
+            >
+              <div className="status-header">
+                <h3>图表执行状态</h3>
+                <Button
+                  type="primary"
+                  icon={<SyncOutlined spin={statusLoading} />}
+                  onClick={handleStatusRefresh}
+                  className="refresh-button"
+                >
+                  刷新状态
+                </Button>
+              </div>
+              <div className="status-list">
+                {statusLoading ? (
+                  <div className="loading-container">
+                    <Spin size="small" />
+                  </div>
+                ) : statusList.length === 0 ? (
+                  <Empty description="暂无未成功图表" />
+                ) : (
+                  statusList.map((chart) => (
+                    <motion.div
+                      key={chart.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="status-item"
+                    >
+                      <div className="status-icon">{getStatusIcon(chart.status)}</div>
+                      <div className="status-content">
+                        <div className="status-title">
+                          <span className="chart-name">{chart.name || '未命名图表'}</span>
+                          <div className="status-actions">
+                            <span className="status-text">{getStatusText(chart.status)}</span>
+                            <Popconfirm
+                              title="确定要删除这个图表吗？"
+                              okText="确定"
+                              cancelText="取消"
+                              onConfirm={() => handleDelete(chart.id || '')}
+                            >
+                              <Button
+                                type="text"
+                                danger
+                                icon={<DeleteOutlined />}
+                                className="delete-button"
+                              />
+                            </Popconfirm>
+                          </div>
+                        </div>
+                        {chart.execMessage && (
+                          <div className="status-message">{chart.execMessage}</div>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))
+                )}
+              </div>
+              {statusTotal > 0 && (
+                <div className="pagination-section">
+                  <Pagination
+                    current={statusParams.current}
+                    pageSize={statusParams.pageSize}
+                    total={statusTotal}
+                    showSizeChanger
+                    showQuickJumper
+                    showTotal={(t) => `共 ${t} 个未成功图表`}
+                    onChange={handleStatusPageChange}
+                    pageSizeOptions={['3', '6', '9', '12']}
+                  />
+                </div>
+              )}
+            </motion.div>
+
+            {/* 主卡片区，只展示succeed的图表 */}
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              className="chart-grid"
+            >
+              <Row gutter={[40, 40]}>
+                {chartList
+                  ?.filter((chart) => chart.status === 'succeed')
+                  .map((chart) => {
                     // 尝试解析图表配置
                     let chartOption;
                     try {
@@ -358,16 +547,30 @@ const MyChartPage: React.FC = () => {
                               </div>
                             }
                             actions={[
-                              <Tooltip title="编辑" key="edit">
-                                <EditOutlined />
+                              <Tooltip title="展示" key="show">
+                                <Button
+                                  type="text"
+                                  icon={<EditOutlined />}
+                                  onClick={() => navigate(`/chart/${chart.id}`)}
+                                  style={{ color: '#1890ff' }}
+                                >
+                                  展示
+                                </Button>
                               </Tooltip>,
                               <Tooltip title="删除" key="delete">
                                 <Popconfirm
                                   title="确定要删除这个图表吗？"
                                   okText="确定"
                                   cancelText="取消"
+                                  onConfirm={() => handleDelete(chart.id || '')}
                                 >
-                                  <DeleteOutlined />
+                                  <Button
+                                    type="text"
+                                    icon={<DeleteOutlined />}
+                                    style={{ color: '#1890ff' }}
+                                  >
+                                    删除
+                                  </Button>
                                 </Popconfirm>
                               </Tooltip>,
                             ]}
@@ -412,9 +615,8 @@ const MyChartPage: React.FC = () => {
                       </Col>
                     );
                   })}
-                </Row>
-              </motion.div>
-            )}
+              </Row>
+            </motion.div>
 
             {total > 0 && (
               <div className="pagination-section">

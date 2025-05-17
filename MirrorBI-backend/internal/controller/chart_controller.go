@@ -1,13 +1,15 @@
 package controller
 
 import (
-	"github.com/gin-gonic/gin"
 	"mrbi/internal/common"
+	"mrbi/internal/consts"
 	"mrbi/internal/ecode"
 	reqChart "mrbi/internal/model/dto/req/chart"
 	resChart "mrbi/internal/model/dto/res/chart"
 	"mrbi/internal/service"
 	"strconv"
+
+	"github.com/gin-gonic/gin"
 )
 
 func dumb() {
@@ -41,11 +43,11 @@ func AddChart(c *gin.Context) {
 		common.BaseResponse(c, nil, err.Msg, err.Code)
 		return
 	}
-	if id, err := sChart.AddChart(cAdd.Goal, cAdd.ChartData, cAdd.ChartType, loginUser.ID, "", "", ""); err != nil {
+	if chart, err := sChart.AddChart(cAdd.Goal, cAdd.ChartData, cAdd.ChartType, loginUser.ID, "", "", "", "succeed", ""); err != nil {
 		common.BaseResponse(c, nil, err.Msg, err.Code)
 		return
 	} else {
-		common.Success(c, strconv.FormatUint(id, 10))
+		common.Success(c, strconv.FormatUint(chart.ID, 10))
 		return
 	}
 }
@@ -153,6 +155,35 @@ func ListMyChartByPage(c *gin.Context) {
 	}
 	loginUser, _ := sUser.GetLoginUser(c)
 	cQuery.UserID = loginUser.ID
+	cQuery.Status = "succeed"
+	if charts, err := sChart.ListChartsByPage(&cQuery); err != nil {
+		common.BaseResponse(c, nil, err.Msg, err.Code)
+		return
+	} else {
+		common.Success(c, charts)
+		return
+	}
+}
+
+// ListMyChartByPage godoc
+// @Summary      根据页数查询图表列表，是未成功分析的列表
+// @Tags         chart
+// @Accept       json
+// @Produce      json
+// @Param		request body reqChart.ChartQueryRequest true "需要查询的页数、以及图表关键信息"
+// @Success      200  {object}  common.Response{data=resChart.ListChartResponse} "查询成功"
+// @Failure      400  {object}  common.Response "更新失败，详情见响应中的code"
+// @Router       /api/chart/list/page/my/no [POST]
+func ListMyChartByPageNo(c *gin.Context) {
+	//使用shouldbind绑定参数，参数不可复用
+	var cQuery reqChart.ChartQueryRequest
+	if err := c.ShouldBind(&cQuery); err != nil {
+		common.BaseResponse(c, nil, "参数绑定错误", ecode.PARAMS_ERROR)
+		return
+	}
+	loginUser, _ := sUser.GetLoginUser(c)
+	cQuery.UserID = loginUser.ID
+	cQuery.Status = consts.ChartStatusNotSucceed
 	if charts, err := sChart.ListChartsByPage(&cQuery); err != nil {
 		common.BaseResponse(c, nil, err.Msg, err.Code)
 		return
@@ -257,4 +288,37 @@ func GetChartData(c *gin.Context) {
 		common.Success(c, data)
 		return
 	}
+}
+
+// ChartGenAsyncByAi godoc
+// @Summary      上传excel文件和目标信息，异步执行AI生成信息。
+// @Tags         chart
+// @Accept multipart/form-data
+// @Produce      json
+// @Param        file formData file true "excel文件"
+// @Param   name      formData  string true  "图表名称"            example(人数趋势)
+// @Param   goal      formData  string true  "分析目标"            example(了解用户增长)
+// @Param   chartType formData  string true  "图表类型"  example(折线图)
+// @Success      200  {object}  common.Response{data=string} "生成成功，返回图表的ID"
+// @Failure      400  {object}  common.Response "生成失败，详情见响应中的code"
+// @Router       /api/chart/gen/ai/async [POST]
+func ChartGenAsyncByAi(c *gin.Context) {
+	//绑定请求参数
+	file, _ := c.FormFile("file")
+	Name := c.PostForm("name")
+	Goal := c.PostForm("goal")
+	ChartType := c.PostForm("chartType")
+	if file == nil {
+		common.BaseResponse(c, nil, "文件不能为空", ecode.PARAMS_ERROR)
+		return
+	}
+	//调用生成服务
+	loginUser, _ := sUser.GetLoginUser(c)
+	id, err := sChart.ChartGenAsyncByAi(file, Name, Goal, ChartType, loginUser)
+	if err != nil {
+		common.BaseResponse(c, nil, err.Msg, err.Code)
+		return
+	}
+	idStr := strconv.FormatUint(id, 10)
+	common.Success(c, idStr)
 }

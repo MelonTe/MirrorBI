@@ -1,13 +1,15 @@
 declare namespace API {
   type Chart = {
-    chartData?: string;
+    chartDataId?: string;
     chartType?: string;
     createTime?: string;
+    execMessage?: string;
     genChart?: string;
     genResult?: string;
     goal?: string;
     id?: string;
     name?: string;
+    status?: string;
     updateTime?: string;
     userId?: string;
   };
@@ -33,6 +35,8 @@ declare namespace API {
   };
 
   type ChartGenByAiResponse = {
+    /** 图表ID */
+    chartId?: string;
     /** 生成的图表数据代码用于展示 */
     genChart?: string;
     /** 生成的图表结果 */
@@ -56,11 +60,18 @@ declare namespace API {
     sortField?: string;
     /** 排序顺序（默认升序） */
     sortOrder?: string;
+    /** 状态 */
+    status?: string;
     /** 用户Id */
     userId?: string;
   };
 
   type DeleteRequest = {
+    id: string;
+  };
+
+  type getChartDataParams = {
+    /** 图表的ID */
     id: string;
   };
 

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"mime/multipart"
 	"mrbi/internal/api/siliconflow"
 	"mrbi/internal/common"
@@ -21,7 +22,9 @@ import (
 	"mrbi/pkg/rds"
 	"strconv"
 	"strings"
+	"sync"
 
+	"github.com/panjf2000/ants/v2"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
@@ -36,16 +39,35 @@ func NewChartService() *ChartService {
 	}
 }
 
-func (s *ChartService) AddChart(goal string, chartData string, chartType string, userId uint64, genChart, genResult string, name string) (uint64, *ecode.ErrorWithCode) {
+// AI生成的协程池，最大支持4个AI任务并发，支持20个任务排队等待
+var aiGenPool *ants.Pool
+var aiGenPoolOnce sync.Once
+
+func GetAiGenPool() *ants.Pool {
+	aiGenPoolOnce.Do(func() {
+		var err error
+		aiGenPool, err = ants.NewPool(4,
+			ants.WithMaxBlockingTasks(20),
+			ants.WithPreAlloc(true),
+			ants.WithNonblocking(true))
+		if err != nil {
+			panic(fmt.Sprintf("创建协程池失败: %v", err))
+		}
+	})
+	return aiGenPool
+}
+
+// 添加一个图表，会保存CSV数据
+func (s *ChartService) AddChart(goal string, chartData string, chartType string, userId uint64, genChart, genResult string, name string, status string, execmessage string) (*entity.Chart, *ecode.ErrorWithCode) {
 	// 1.校验
 	if chartData == "" || chartType == "" {
-		return 0, ecode.GetErrWithDetail(ecode.PARAMS_ERROR, "参数为空")
+		return nil, ecode.GetErrWithDetail(ecode.PARAMS_ERROR, "参数为空")
 	}
 	if len(chartData) < 4 {
-		return 0, ecode.GetErrWithDetail(ecode.PARAMS_ERROR, "图表数据过短")
+		return nil, ecode.GetErrWithDetail(ecode.PARAMS_ERROR, "图表数据过短")
 	}
 	if len(chartType) < 4 {
-		return 0, ecode.GetErrWithDetail(ecode.PARAMS_ERROR, "图表类型过短")
+		return nil, ecode.GetErrWithDetail(ecode.PARAMS_ERROR, "图表类型过短")
 	}
 
 	// 2.添加图表，开启事务
@@ -54,38 +76,40 @@ func (s *ChartService) AddChart(goal string, chartData string, chartType string,
 	jsonData, err := s.ConvertChartDataToJSON(chartData)
 	if err != nil {
 		tx.Rollback()
-		return 0, err
+		return nil, err
 	}
 	//构造图表对象
 	chartJsonData := &entity.ChartDataJSON{
 		Data: datatypes.JSON([]byte(jsonData)),
 	}
 	chart := &entity.Chart{
-		UserID:    userId,
-		ChartType: chartType,
-		Goal:      goal,
-		GenChart:  genChart,
-		GenResult: genResult,
-		Name:      name,
+		UserID:      userId,
+		ChartType:   chartType,
+		Goal:        goal,
+		GenChart:    genChart,
+		GenResult:   genResult,
+		Name:        name,
+		Status:      status,
+		ExecMessage: execmessage,
 	}
 	//先存储chartData
 	chartDataId, originErr := s.ChartRepo.AddChartDataJSON(tx, chartJsonData)
 	if originErr != nil {
 		tx.Rollback()
-		return 0, ecode.GetErrWithDetail(ecode.SYSTEM_ERROR, "数据库操作错误")
+		return nil, ecode.GetErrWithDetail(ecode.SYSTEM_ERROR, "数据库操作错误")
 	}
 	//设置Chart的chartDataId
 	chart.ChartDataID = chartDataId
-	id, originErr := s.ChartRepo.AddChart(nil, chart)
+	_, originErr = s.ChartRepo.AddChart(nil, chart)
 	if originErr != nil {
 		tx.Rollback()
-		return 0, ecode.GetErrWithDetail(ecode.SYSTEM_ERROR, "数据库操作错误")
+		return nil, ecode.GetErrWithDetail(ecode.SYSTEM_ERROR, "数据库操作错误")
 	}
 	//提交事务
 	if err := tx.Commit().Error; err != nil {
-		return 0, ecode.GetErrWithDetail(ecode.SYSTEM_ERROR, "数据库操作错误")
+		return nil, ecode.GetErrWithDetail(ecode.SYSTEM_ERROR, "数据库操作错误")
 	}
-	return id, nil
+	return chart, nil
 }
 
 // 将ChartData转化为JSON数据
@@ -203,6 +227,11 @@ func (s *ChartService) GetQueryWrapper(db *gorm.DB, req *reqChart.ChartQueryRequ
 	if req.Goal != "" {
 		query = query.Where("goal = ?", req.Goal)
 	}
+	if req.Status != "" && req.Status != consts.ChartStatusNotSucceed {
+		query = query.Where("status = ?", req.Status)
+	} else if req.Status == consts.ChartStatusNotSucceed {
+		query = query.Where("status != ?", consts.ChartStatusSucceed)
+	}
 	return query, nil
 }
 
@@ -275,7 +304,7 @@ func (s *ChartService) EditChart(request *reqChart.ChartEditRequest, loginUser *
 	return true, nil
 }
 
-// 根据excel文件、生成图表名称、目标和类型，返回生成结果
+// 根据excel文件、生成图表名称、目标和类型，返回生成结果（同步执行）
 func (s *ChartService) ChartGenByAi(excelFile *multipart.FileHeader, name, goal, chartType string, loginUser *entity.User) (*resChart.ChartGenByAiResponse, *ecode.ErrorWithCode) {
 	//先尝试获取令牌
 	acquire, originErr := rds.GetAIRateLimiter().Allow(context.Background(), "AI-Chart-Gen", 1)
@@ -315,15 +344,125 @@ func (s *ChartService) ChartGenByAi(excelFile *multipart.FileHeader, name, goal,
 		return nil, ecode.GetErrWithDetail(ecode.SYSTEM_ERROR, err.Error())
 	}
 	//构建图表入库
-	id, ERR := s.AddChart(goal, data, chartType, loginUser.ID, genChart, genResult, name)
+	chart, ERR := s.AddChart(goal, data, chartType, loginUser.ID, genChart, genResult, name, consts.ChartStatusSucceed, "")
 	if ERR != nil {
 		return nil, ERR
 	}
 	return &resChart.ChartGenByAiResponse{
 		GenChart:  genChart,
 		GenResult: genResult,
-		ChartID:   id,
+		ChartID:   chart.ID,
 	}, nil
+}
+
+// 根据excel文件、生成图表名称、目标和类型，返回生成结果（异步执行）
+func (s *ChartService) ChartGenAsyncByAi(excelFile *multipart.FileHeader, name, goal, chartType string, loginUser *entity.User) (uint64, *ecode.ErrorWithCode) {
+	//先尝试获取令牌
+	acquire, originErr := rds.GetAIRateLimiter().Allow(context.Background(), "AI-Chart-Gen", 1)
+	if originErr != nil {
+		return 0, ecode.GetErrWithDetail(ecode.SYSTEM_ERROR, "获取令牌失败")
+	}
+	if !acquire {
+		return 0, ecode.GetErrWithDetail(ecode.SYSTEM_ERROR, "请求过于频繁,请稍后再试")
+	}
+	//文件存放至本地，需要校验文件不能＞20MB
+	dst, originErr := utils.SaveFileToLocal(excelFile)
+	if originErr != nil {
+		return 0, ecode.GetErrWithDetail(ecode.SYSTEM_ERROR, "文件保存失败")
+	} else {
+		defer utils.DeleteFile(dst)
+	}
+	data, originErr := utils.ExcelToCSV(dst)
+	if originErr != nil {
+		return 0, ecode.GetErrWithDetail(ecode.SYSTEM_ERROR, originErr.Error())
+	}
+
+	//构建图表入库,状态为等待执行
+	chart, ERR := s.AddChart(goal, data, chartType, loginUser.ID, "", "", name, consts.ChartStatusWait, "")
+	if ERR != nil {
+		return 0, ERR
+	}
+
+	//获取协程池
+	aiPool := GetAiGenPool()
+	//异步执行
+	go func() {
+		var err error
+		taskErr := aiPool.Submit(func() {
+			//修改chart状态为执行中
+			chart.Status = consts.ChartStatusRunning
+			chart.ExecMessage = "正在执行"
+			updateMap := map[string]interface{}{
+				"status":       chart.Status,
+				"exec_message": chart.ExecMessage,
+			}
+			err = s.ChartRepo.UpdateChartByMap(nil, chart.ID, updateMap)
+			if err != nil {
+				//更新失败，返回错误
+				return
+			}
+			//开始处理任务
+			//构造AI调用请求参数
+			userRequirement := fmt.Sprintf("分析需求:%s", goal)
+			if chartType != "" {
+				userRequirement += fmt.Sprintf(",图表类型:%s", chartType)
+			}
+			//调用API
+			res, err := siliconflow.NewLLMChatReqeustNoContext(userRequirement, data)
+			if err != nil {
+				return
+			}
+			//提取res中的数据
+			genChart, genResult, err := s.GetGenResultAndChart(res.Choices[0].Message.Content)
+			if err != nil {
+				return
+			}
+			//保存状态
+			chart.GenChart = genChart
+			chart.GenResult = genResult
+			updateMap = map[string]interface{}{
+				"status":       consts.ChartStatusSucceed,
+				"exec_message": "执行成功",
+				"gen_chart":    chart.GenChart,
+				"gen_result":   chart.GenResult,
+			}
+			//存储数据库
+			err = s.ChartRepo.UpdateChartByMap(nil, chart.ID, updateMap)
+			if err != nil {
+				//更新失败，返回错误
+				return
+			}
+		})
+		//进行错误处理
+		if taskErr != nil {
+			//任务提交失败了，进行数据库的更新
+			updateMap := map[string]interface{}{
+				"status":       consts.ChartStatusFailed,
+				"exec_message": "任务提交失败" + taskErr.Error(),
+			}
+			ERR := s.ChartRepo.UpdateChartByMap(nil, chart.ID, updateMap)
+			if ERR != nil {
+				//进行日志打印
+				log.Println("更新任务失败记录失败", ERR)
+				return
+			}
+		}
+		if err != nil {
+			//AI任务内部执行出错，记录出错信息
+			updateMap := map[string]interface{}{
+				"status":       consts.ChartStatusFailed,
+				"exec_message": err.Error(),
+			}
+			ERR := s.ChartRepo.UpdateChartByMap(nil, chart.ID, updateMap)
+			if ERR != nil {
+				//进行日志打印
+				log.Println("更新任务失败记录失败", ERR)
+				return
+			}
+		}
+	}()
+	//提前返回任务ID
+	return chart.ID, nil
 }
 
 // 从AI生成的文本中提取图表数据和结果，若未能成功提取返回错误

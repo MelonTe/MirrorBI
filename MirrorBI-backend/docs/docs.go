@@ -299,6 +299,79 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/chart/gen/ai/async": {
+            "post": {
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chart"
+                ],
+                "summary": "上传excel文件和目标信息，异步执行AI生成信息。",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "excel文件",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "人数趋势",
+                        "description": "图表名称",
+                        "name": "name",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "了解用户增长",
+                        "description": "分析目标",
+                        "name": "goal",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "折线图",
+                        "description": "图表类型",
+                        "name": "chartType",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "生成成功，返回图表的ID",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "生成失败，详情见响应中的code",
+                        "schema": {
+                            "$ref": "#/definitions/common.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/chart/get": {
             "get": {
                 "consumes": [
@@ -411,6 +484,57 @@ const docTemplate = `{
                     "chart"
                 ],
                 "summary": "根据页数查询图表列表",
+                "parameters": [
+                    {
+                        "description": "需要查询的页数、以及图表关键信息",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chart.ChartQueryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "查询成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/chart.ListChartResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "更新失败，详情见响应中的code",
+                        "schema": {
+                            "$ref": "#/definitions/common.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/chart/list/page/my/no": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chart"
+                ],
+                "summary": "根据页数查询图表列表，是未成功分析的列表",
                 "parameters": [
                     {
                         "description": "需要查询的页数、以及图表关键信息",
@@ -1079,6 +1203,10 @@ const docTemplate = `{
                     "description": "排序顺序（默认升序）",
                     "type": "string"
                 },
+                "status": {
+                    "description": "状态",
+                    "type": "string"
+                },
                 "userId": {
                     "description": "用户Id",
                     "type": "string",
@@ -1153,6 +1281,9 @@ const docTemplate = `{
                 "createTime": {
                     "type": "string"
                 },
+                "execMessage": {
+                    "type": "string"
+                },
                 "genChart": {
                     "type": "string"
                 },
@@ -1167,6 +1298,9 @@ const docTemplate = `{
                     "example": ""
                 },
                 "name": {
+                    "type": "string"
+                },
+                "status": {
                     "type": "string"
                 },
                 "updateTime": {

@@ -52,6 +52,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/mozillazg/go-httpheader v0.2.1 // indirect
+	github.com/panjf2000/ants/v2 v2.11.3 // indirect
 	github.com/richardlehane/mscfb v1.0.4 // indirect
 	github.com/richardlehane/msoleps v1.0.4 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
@@ -60,6 +61,7 @@ require (
 	github.com/xuri/nfp v0.0.0-20240318013403-ab9948c2c4a7 // indirect
 	golang.org/x/arch v0.16.0 // indirect
 	golang.org/x/net v0.40.0 // indirect
+	golang.org/x/sync v0.14.0 // indirect
 	golang.org/x/tools v0.33.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 )

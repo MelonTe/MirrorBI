@@ -14,6 +14,8 @@ type Chart struct {
 	ChartType   string         `gorm:"type:varchar(128);comment:图表类型" json:"chartType"`
 	GenChart    string         `gorm:"type:text;comment:AI生成的图表数据" json:"genChart"`
 	GenResult   string         `gorm:"type:text;comment:AI生成的分析结论" json:"genResult"`
+	ExecMessage string         `gorm:"type:text;comment:执行消息" json:"execMessage"`
+	Status      string         `gorm:"type:varchar(128);default:wait;not null;comment:图表状态,wait,running,succeed,failed" json:"status"`
 	UserID      uint64         `gorm:"comment:创建用户 id" json:"userId,string" swaggertype:"string"`
 	CreateTime  time.Time      `gorm:"autoCreateTime;comment:创建时间" json:"createTime"`
 	UpdateTime  time.Time      `gorm:"autoUpdateTime;comment:更新时间" json:"updateTime"`
