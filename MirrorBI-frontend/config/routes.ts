@@ -2,7 +2,10 @@ export default [
   {
     path: '/user',
     layout: false,
-    routes: [{ name: '登录', path: '/user/login', component: './User/Login' }],
+    routes: [
+      { name: '登录', path: '/user/login', component: './User/Login' },
+      { name: '注册', path: '/user/register', component: './User/Register' },
+    ],
   },
   { path: '/', redirect: '/add_chart' },
   { path: '/add_chart', name: '智能分析', icon: 'barChart', component: './AddChart' },

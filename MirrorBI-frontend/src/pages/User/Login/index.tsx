@@ -1,23 +1,19 @@
 import { Footer } from '@/components';
+import { getUserGetLogin, postUserLogin } from '@/services/MirrorBI/user';
 import {
   AlipayCircleOutlined,
   LockOutlined,
-  MobileOutlined,
   TaobaoCircleOutlined,
   UserOutlined,
   WeiboCircleOutlined,
 } from '@ant-design/icons';
-import {
-  LoginForm,
-  ProFormText,
-} from '@ant-design/pro-components';
+import { LoginForm, ProFormText } from '@ant-design/pro-components';
 import { Helmet, history, Link, useModel } from '@umijs/max';
-import { Alert, message, Tabs } from 'antd';
+import { message, Tabs } from 'antd';
 import { createStyles } from 'antd-style';
 import React, { useState } from 'react';
 import { flushSync } from 'react-dom';
 import Settings from '../../../../config/defaultSettings';
-import { getUserGetLogin, postUserLogin } from '@/services/MirrorBI/user';
 const useStyles = createStyles(({ token }) => {
   return {
     action: {
@@ -90,8 +86,8 @@ const Login: React.FC = () => {
         const urlParams = new URL(window.location.href).searchParams;
         history.push(urlParams.get('redirect') || '/');
         return;
-      }else{
-          message.error(res.message);
+      } else {
+        message.error(res.message);
       }
     } catch (error) {
       const defaultLoginFailureMessage = '登录失败，请重试！';
@@ -173,11 +169,7 @@ const Login: React.FC = () => {
               marginBottom: 24,
             }}
           >
-            <Link
-              to="/user/register"
-            >
-              注册
-            </Link>
+            <Link to="/user/register">注册</Link>
           </div>
         </LoginForm>
       </div>

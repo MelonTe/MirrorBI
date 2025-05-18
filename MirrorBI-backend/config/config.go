@@ -33,6 +33,12 @@ type Config struct {
 	Siliconflow struct {
 		APIkey string `mapstructure:"apikey"`
 	}
+	RabbitMQ struct {
+		Host     string `mapstructure:"host"`
+		Port     int    `mapstructure:"port"`
+		UserName string `mapstructure:"username"`
+		Password string `mapstructure:"password"`
+	}
 }
 
 var config *Config

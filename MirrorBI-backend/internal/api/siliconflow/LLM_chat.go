@@ -24,6 +24,7 @@ func NewLLMChatReqeust(requirement string, csvData string) *openai.LLMRequest {
 		"option = {代码}\n" +
 		"数据分析结论:{中文结论分析}\n")
 	return &openai.LLMRequest{
+		//Model: "Pro/deepseek-ai/DeepSeek-R1",
 		Model:       "Pro/deepseek-ai/DeepSeek-V3",
 		Temperature: 0.7,
 		Messages: []openai.Message{
@@ -31,7 +32,7 @@ func NewLLMChatReqeust(requirement string, csvData string) *openai.LLMRequest {
 			{Role: "user", Content: fmt.Sprintf("分析需求:\n%s\n数据源:\n%s", requirement, csvData)},
 		},
 		Stream:    true,
-		MaxTokens: 2000,
+		MaxTokens: 8000,
 	}
 }
 
